@@ -1,4 +1,4 @@
-###三体云SDK和相芯科技结合使用
+### 三体云SDK和相芯科技结合使用
 
 #### 1. 加入房间前调用
 
@@ -31,6 +31,7 @@ _temporaryContext = [CIContext contextWithOptions:nil];
 ```
 - (void)rtcEngine:(TTTRtcEngineKit *)engine localVideoFrameCaptured:(TTTRtcVideoFrame *)videoFrame {
     //不要变更线程  美颜 videoFrame.textureBuffer
+    //美颜接口调用之后处理下面代码
     CVPixelBufferRef imageBuffer = videoFrame.textureBuffer;
     CVPixelBufferRetain(imageBuffer);
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
