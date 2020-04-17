@@ -115,6 +115,8 @@
                                          kCVPixelFormatType_32BGRA,
                                          attrs,
                                          &_renderBuffer);
+    CFRelease(attrs);
+    CFRelease(empty);
     if (kCVReturnSuccess != cvRet) {
         NSLog(@"TTT OpenGL Error CVPixelBufferCreate %d" , cvRet);
     }
