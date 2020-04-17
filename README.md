@@ -24,7 +24,7 @@
     //...美颜
     
     //美颜接口调用之后处理下面代码
-    CVPixelBufferRef imageBuffer = videoFrame.textureBuffer;
+    CVPixelBufferRef pixelBuffer = videoFrame.textureBuffer;
     
     //下载文件TTTMetalPlayer.h TTTMetalPlayer.m使用TTTMetalPlayer做渲染
     //注意视频的显示模式，通过contentMode设置
