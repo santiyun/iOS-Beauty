@@ -9,7 +9,7 @@
 
 ```
 
-#### 2. 不再使用原来预览显示视频
+#### 2. 不下面方法预览视频
 
 ```
 - (int)setupLocalVideo:(TTTRtcVideoCanvas*)local;

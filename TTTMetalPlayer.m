@@ -2,8 +2,8 @@
 //  TTTMetalPlayer.m
 //  LinkPK
 //
-//  Created by Work on 2020/4/16.
-//  Copyright © 2020 yanzhen. All rights reserved.
+//  Created by yanzhen on 2020/4/16.
+//  Copyright © 2020 3T. All rights reserved.
 //
 
 #import "TTTMetalPlayer.h"
@@ -19,17 +19,25 @@
 
 @property (nonatomic) CGFloat frameWidth;
 @property (nonatomic) CGFloat frameHeight;
+
+@property (nonatomic) BOOL isIpad;
+@property (nonatomic, strong) CIContext *context;
+
+@property (nonatomic, strong) UIImageView *imageView;
 @end
 
 @implementation TTTMetalPlayer {
     dispatch_semaphore_t _renderingSemaphore;
     CVPixelBufferRef _renderBuffer;
+    
+    CGColorSpaceRef _colorSpace;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
     if (self) {
+        _isIpad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
         _renderQueue = dispatch_queue_create("com.ttt.renderQueue", DISPATCH_QUEUE_SERIAL);
         _renderingSemaphore = dispatch_semaphore_create(1);
         [self setupMetal];
@@ -46,10 +54,17 @@
     self.mtkView = [[MTKView alloc] initWithFrame:self.bounds];
     self.mtkView.device = MTLCreateSystemDefaultDevice();
     [self insertSubview:self.mtkView atIndex:0];
+    self.mtkView.paused = YES;
+    self.mtkView.enableSetNeedsDisplay = NO;
     self.mtkView.delegate = self;
     self.mtkView.framebufferOnly = NO;
     self.commandQueue = [self.mtkView.device newCommandQueue];
     CVMetalTextureCacheCreate(NULL, NULL, self.mtkView.device, NULL, &_textureCache);
+    
+    if (_isIpad) {
+        _colorSpace = CGColorSpaceCreateDeviceRGB();
+        _context =[CIContext contextWithMTLDevice:self.mtkView.device];
+    }
 }
 
 
@@ -85,6 +100,7 @@
             self.mtkView.drawableSize = CGSizeMake(width, height);
             self.texture = CVMetalTextureGetTexture(tmpTexture);
             CFRelease(tmpTexture);
+            [self.mtkView draw];
         }
         CVPixelBufferRelease(self->_renderBuffer);
         dispatch_semaphore_signal(self->_renderingSemaphore);
@@ -132,6 +148,10 @@
     if (_renderBuffer) {
         CFRelease(_renderBuffer);
     }
+    
+    if (_colorSpace) {
+        CGColorSpaceRelease(_colorSpace);
+    }
 }
 #pragma mark - MTKViewDelegate
 - (void)mtkView:(nonnull MTKView *)view drawableSizeWillChange:(CGSize)size {
@@ -139,16 +159,21 @@
 }
 
 - (void)drawInMTKView:(MTKView *)view {
-    if (self.texture) {
-        id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-        id<MTLTexture> drawingTexture = view.currentDrawable.texture;
-        
+    if (!self.texture) { return; }
+    id<MTLTexture> drawingTexture = view.currentDrawable.texture;
+    id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
+    if (_isIpad) {
+        CIImage *inputImage = [CIImage imageWithMTLTexture:self.texture options:nil];
+        inputImage = [inputImage imageByApplyingOrientation:4];
+        CGRect rect = CGRectMake(0, 0, view.drawableSize.width, view.drawableSize.height);
+        [self.context render:inputImage toMTLTexture:drawingTexture commandBuffer:commandBuffer bounds:rect colorSpace:_colorSpace];
+    } else {
         MPSImageGaussianBlur *filter = [[MPSImageGaussianBlur alloc] initWithDevice:self.mtkView.device sigma:0];
         [filter encodeToCommandBuffer:commandBuffer sourceTexture:self.texture destinationTexture:drawingTexture];
-        [commandBuffer presentDrawable:view.currentDrawable];
-        [commandBuffer commit];
-        self.texture = NULL;
     }
+    [commandBuffer presentDrawable:view.currentDrawable];
+    [commandBuffer commit];
+    self.texture = NULL;
 }
 
 @end
